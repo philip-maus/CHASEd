@@ -9,7 +9,8 @@ class TagGUIWindow(Frame):
         self.master = master
 
 
-root = Tk()
-app = TagGUIWindow(root)
-root.wm_title("CHASEd TagGUI")
-root.mainloop()
+if __name__=="__main__":
+    root = Tk()
+    app = TagGUIWindow(root)
+    root.wm_title("CHASEd TagGUI")
+    root.mainloop()
