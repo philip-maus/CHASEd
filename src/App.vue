@@ -9,11 +9,18 @@
       <h1>CHASEd</h1>
       <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
     </header>
-    <main>
-      <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener"></div>
+    <main ref="main">
+      <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
     </main>
     <aside>
-
+      <h2>Debug-Infos:</h2>
+      <ul>
+        <li>Ecke 1: {{ p1 * 100}}%</li>
+        <li>Ecke 2: {{ p2 * 100}}%</li>
+        <li>Ecke 3: {{ p3 * 100}}%</li>
+        <li>Ecke 4: {{ p4 * 100}}%</li>
+        <li>Summer: {{ p1 + p2 + p3 + p4 }}%</li>
+      </ul>
     </aside>
   </div>
 </template>
@@ -32,7 +39,7 @@ export default Vue.extend({
     x: 0,
     y: 0,
     playing: null,
-    positions: {}
+    isMounted: false
   }),
   computed: {
     play: {
@@ -42,12 +49,45 @@ export default Vue.extend({
       set(value) {
         this.playing = value ? {tags: {"title": "asdf"}} : null;
       }
+    },
+    mainWidth() {
+      return this.isMounted ? this.$refs.main.clientWidth : 0;
+    },
+    mainHeight() {
+      return this.isMounted ? this.$refs.main.clientHeight : 0;
+    },
+    aL() {
+      return this.isMounted ? this.$refs.listener.clientLeft : 0;
+    },
+    aR() {
+      return this.isMounted ? this.mainWidth - this.$refs.listener.clientLeft : 0;
+    },
+    aT() {
+      return this.isMounted ? this.$refs.listener.clientTop - this.$refs.main.clientTop : 0;
+    },
+    aB() {
+      return this.isMounted ? (this.mainHeight + this.$refs.main.clientTop) - this.$refs.listener.clientTop : 0;
+    },
+    p1() {
+      return this.isMounted ? (this.aL / this.mainWidth + this.aT / this.mainHeight) / 2 : 0;
+    },
+    p2() {
+      return this.isMounted ? (1 - (this.aL / this.mainWidth) + this.aT / this.mainHeight) / 2 : 0;
+    },
+    p3() {
+      return this.isMounted ? (this.aL / this.mainWidth + 1 - (this.aT / this.mainHeight)) / 2 : 0;
+    },
+    p4() {
+      return this.isMounted ? (1 - (this.aL / this.mainWidth) + 1 - (this.aT / this.mainHeight)) / 2 : 0;
     }
   },
   beforeCreate: function () {
     Promise.all(require.context('./audio', true, /\.mp3$/).keys() // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
         .map(file => AudioFile.fromPath(require("./audio/" + file.substr(2))))) // Audiodatei aus Pfad erstellen (substring löscht ./)
         .then(audio_files => this.audio_files = audio_files);
+  },
+  mounted() {
+    this.isMounted = true;
   },
   methods: {
     dragListener(e) {
@@ -118,7 +158,11 @@ main {
 aside {
   position: fixed;
   right: 0;
-
+  bottom: 0;
+  height: 90%;
+  width: 30%;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
 }
 
 h1 {
