@@ -1,4 +1,5 @@
 const path = require("path");
+const {VueLoaderPlugin} = require("vue-loader");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
@@ -6,6 +7,15 @@ module.exports = {
     entry: './src/main.js',
     module: {
         rules: [
+            {
+                test: /\.vue$/,
+                loader: 'vue-loader'
+            },
+            {
+                test: /\.tsx?$/,
+                use: 'ts-loader',
+                exclude: /node_modules/,
+            },
             {
                 test: /\.m?js$/,
                 exclude: /(node_modules)/,
@@ -31,11 +41,16 @@ module.exports = {
             {
                 test: /\.(woff|woff2|eot|ttf|otf)$/i,
                 type: 'asset/resource',
+            },
+            {
+                test: /\.(mp3)$/i,
+                type: 'asset/resource',
             }
         ],
     },
     plugins: [
         new HtmlWebpackPlugin({title: 'CHASEd', minify: true}),
+        new VueLoaderPlugin()
     ],
     output: {
         filename: '[name].[contenthash].js',
@@ -62,7 +77,27 @@ module.exports = {
         },
         minimizer: [
             new TerserPlugin(),
-            new CssMinimizerPlugin()
+            new CssMinimizerPlugin(),
+            new VueLoaderPlugin()
         ]
     },
+    resolve: {
+        alias: {
+            vue$: 'vue/dist/vue.esm.js'
+        },
+        extensions: ['.tsx', '.ts', '.js', '.vue'],
+    },
+    devServer: {
+        static: {
+            directory: path.join(__dirname, 'public'),
+        },
+        client: {
+            progress: true,
+            overlay: true,
+            webSocketURL: "wss://pc.pmaus.de/ws"
+        },
+        allowedHosts: ["pc.pmaus.de"],
+        compress: true,
+        port: 9000,
+    }
 };
