@@ -13,14 +13,16 @@ class AudioFile {
     //Audiofile.fromPath(<Dateipfad>)
     static fromPath(path) {
         return new Promise((resolve, reject) => jsmediatags.read(path, {
-            onSuccess: tags => // Tags aus Datei geladen
+            onSuccess: tags => {// Tags aus Datei geladen
                 resolve(new AudioFile(path, // Dateipfad
                     Object.fromEntries(
-                        tags.tags["TXXX"] // Benutzerdefinierte Werte
-                        .map(e => [e.data["user_description"], // Bezeichnung des Werts -> Schlüssel des Objekts mit Object.fromEntities()
-                            e.data["data"]]) // Inhalt des Wertes -> Inhalt des Schlüssels mit Object.fromEntities()
+                        [["title", tags.tags.title], // Titel auslesen
+                            ...tags.tags["TXXX"] // Benutzerdefinierte Werte
+                            .map(e => [e.data["user_description"], // Bezeichnung des Werts -> Schlüssel des Objekts mit Object.fromEntities()
+                                e.data["data"]])] // Inhalt des Wertes -> Inhalt des Schlüssels mit Object.fromEntities()
                     )
-                )),
+                ))
+            },
             onError: error => reject(error) // Fehler beim Laden
         }));
     }

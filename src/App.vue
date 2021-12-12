@@ -1,10 +1,20 @@
 <template>
-  <div>
-    <button @click="play = !play">{{ play ? "Pause" : "Abspielen" }}</button>
-    <h1>CHASEd</h1>
-    <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
-    <hr>
-    <div :class="'listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
+  <div class="app-content">
+    <header>
+      <div class="player">
+        <span v-if="play">Spielt gerade: </span>
+        <span v-if="play">{{ playing.tags.title }}</span>
+        <button @click="play = !play">{{ play ? "Pause" : "Abspielen" }}</button>
+      </div>
+      <h1>CHASEd</h1>
+      <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
+    </header>
+    <main>
+      <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener"></div>
+    </main>
+    <aside>
+
+    </aside>
   </div>
 </template>
 <script>
@@ -21,38 +31,40 @@ export default Vue.extend({
     key: null,
     x: 0,
     y: 0,
-    play: false
+    playing: null,
+    positions: {}
   }),
+  computed: {
+    play: {
+      get() {
+        return this.playing != null;
+      },
+      set(value) {
+        this.playing = value ? {tags: {"title": "asdf"}} : null;
+      }
+    }
+  },
   beforeCreate: function () {
     Promise.all(require.context('./audio', true, /\.mp3$/).keys() // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
         .map(file => AudioFile.fromPath(require("./audio/" + file.substr(2))))) // Audiodatei aus Pfad erstellen (substring löscht ./)
         .then(audio_files => this.audio_files = audio_files);
   },
   methods: {
-    create_and_play() {
-      this.audio_files.filter(a => a.tags["MODE"] === this.mode && a.tags["KEY"] === this.key);
-    },
-    play_next() {
-      this.queue[0].audio.play();
-      setTimeout(() => {
-        this.queue.shift();
-        if (this.queue.length > 0) this.play_next();
-      }, this.queue[0].tags["NEXT"] * 1000 + (Math.random() * this.max));
-    },
     dragListener(e) {
       e.preventDefault();
-      this.x = e.clientX;
-      this.y = e.clientY;
+      const el = e.target;
+      el.x = e.clientX;
+      el.y = e.clientY;
       document.onmouseup = () => {
         document.onmouseup = null;
         document.onmousemove = null;
       };
       document.onmousemove = e => {
         e.preventDefault();
-        this.$refs.listener.style.top = (this.$refs.listener.offsetTop - (this.y - e.clientY)) + "px";
-        this.$refs.listener.style.left = (this.$refs.listener.offsetLeft - (this.x - e.clientX)) + "px";
-        this.x = e.clientX;
-        this.y = e.clientY;
+        el.style.top = (el.offsetTop - (el.y - e.clientY)) + "px";
+        el.style.left = (el.offsetLeft - (el.x - e.clientX)) + "px";
+        el.x = e.clientX;
+        el.y = e.clientY;
       };
     }
   }
@@ -60,29 +72,59 @@ export default Vue.extend({
 </script>
 <style module>
 body {
-  /*background: rgb(175, 175, 175);
-  background: linear-gradient(90deg, rgba(175, 175, 175, 1) 0%, rgba(175, 175, 175, 1) 45%, rgba(200, 200, 200, 1) 100%);*/
+  background-color: #aaa;
+  color: #000;
+}
+
+header {
   position: fixed;
+  width: 100%;
+  height: 10%;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
+}
+
+.player {
+  float: right;
+  margin-left: 20px;
+}
+
+.player span {
+  position: relative;
+  font: 1.5rem "Courier New", monospace;
+  margin-top: 50%;
+  transform: translateY(-50%);
+}
+
+main {
+  /*background: rgb(175, 175, 175);
+  background: linear-gradient(90deg, rgba(175, 175, 175, 1) 0%, rgba(175, 175, 175, 1) 45%, rgba(200, 200, 200, 1) 100%);*/
+  position: fixed;
+  right: 30%;
+  top: 10%;
+  height: 90%;
+  width: 70%;
   margin: 0;
   padding: 0;
-  background: linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
-      linear-gradient(127deg, rgba(0,255,0,.8), rgba(0,255,0,0) 70.71%),
-      linear-gradient(336deg, rgba(0,0,255,.8), rgba(0,0,255,0) 70.71%);
+  background: linear-gradient(217deg, rgba(255, 0, 0, .8), rgba(255, 0, 0, 0) 70.71%),
+  linear-gradient(127deg, rgba(0, 255, 0, .8), rgba(0, 255, 0, 0) 70.71%),
+  linear-gradient(336deg, rgba(0, 0, 255, .8), rgba(0, 0, 255, 0) 70.71%);
   background-repeat: no-repeat;
   background-attachment: fixed;
   background-position: center;
 }
 
+aside {
+  position: fixed;
+  right: 0;
+
+}
+
 h1 {
   margin-top: 20px;
   margin-left: 20px;
-  font: 40px "Courier New", monospace;
+  font: 2rem "Courier New", monospace;
   color: #000;
 }
 
@@ -96,14 +138,17 @@ button {
 
 p {
   margin-left: 20px;
-  font: 20px "Courier New", monospace;
+  font: 1.5rem "Courier New", monospace;
   color: #000;
 }
 
 .listener {
-  position: fixed;
   left: 50%;
   top: 50%;
+}
+
+.entity {
+  position: fixed;
   transform: translateX(-50%) translateY(-50%);
   width: 4rem;
   height: 4rem;
@@ -130,7 +175,7 @@ p {
   animation: pulse-dot 1.25s cubic-bezier(0.455, 0.03, 0.515, 0.955) -0.4s infinite;
 }
 
-.listener:after {
+.entity:after {
   content: "";
   position: absolute;
   left: 0;
@@ -160,6 +205,7 @@ p {
     opacity: 0;
   }
 }
+
 @-webkit-keyframes pulse-dot {
   0% {
     transform: scale(0.8);
@@ -171,6 +217,7 @@ p {
     transform: scale(0.8);
   }
 }
+
 @keyframes pulse-dot {
   0% {
     transform: scale(0.8);
