@@ -49,7 +49,7 @@ module.exports = {
         ],
     },
     plugins: [
-        new HtmlWebpackPlugin({title: 'CHASEd', minify: true}),
+        new HtmlWebpackPlugin({template: "src/index.html", minify: true}),
         new VueLoaderPlugin()
     ],
     output: {
