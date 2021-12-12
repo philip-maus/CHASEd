@@ -18,7 +18,6 @@ build:
 
 pages:
   stage: deploy
-  when: manual
   artifacts:
     paths:
       - public
