@@ -22,5 +22,5 @@ pages:
   artifacts:
     paths:
       - public
-
+  script: echo "OK"
   
