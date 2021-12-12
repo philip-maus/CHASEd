@@ -1,0 +1,26 @@
+image: node:alpine
+
+cache:
+  paths:
+    - node_modules/
+    - package-lock.json
+
+build:
+  stage: build
+  artifacts:
+    paths:
+      - public/
+  before_script:
+    - npm update -g
+  script:
+    - npm install
+    - npm run build
+
+pages:
+  stage: deploy
+  when: manual
+  artifacts:
+    paths:
+      - public
+
+  
