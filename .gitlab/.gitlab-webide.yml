@@ -1,7 +1,5 @@
 terminal:
-  image: python:slim
-  before_script:
-    - pip install eyed3
+  image: node:latest
   script: sleep 60
   services:
     - name: registry.gitlab.com/gitlab-org/webide-file-sync:latest
