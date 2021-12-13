@@ -15,11 +15,8 @@
     <aside>
       <h2>Debug-Infos:</h2>
       <ul>
-        <li>Ecke 1: {{ p1 * 100}}%</li>
-        <li>Ecke 2: {{ p2 * 100}}%</li>
-        <li>Ecke 3: {{ p3 * 100}}%</li>
-        <li>Ecke 4: {{ p4 * 100}}%</li>
-        <li>Summer: {{ p1 + p2 + p3 + p4 }}%</li>
+        <li v-for="i in [0, 1, 2, 3]">Ecke {{ i + 1 }}: {{ edges[i] }}%</li>
+        <li>Summe: {{ sum }}%</li>
       </ul>
     </aside>
   </div>
@@ -32,16 +29,13 @@ export default Vue.extend({
   name: "App",
   data: () => ({
     audio_files: [],
-    queue: [],
-    max: 0,
-    mode: null,
-    key: null,
-    x: 0,
-    y: 0,
     playing: null,
-    isMounted: false
+    edges: [0.25, 0.25, 0.25, 0.25]
   }),
   computed: {
+    sum() {
+      return this.edges.reduce((a, b) => a + b, 0);
+    },
     play: {
       get() {
         return this.playing != null;
@@ -49,36 +43,6 @@ export default Vue.extend({
       set(value) {
         this.playing = value ? {tags: {"title": "asdf"}} : null;
       }
-    },
-    mainWidth() {
-      return this.isMounted ? this.$refs.main.clientWidth : 0;
-    },
-    mainHeight() {
-      return this.isMounted ? this.$refs.main.clientHeight : 0;
-    },
-    aL() {
-      return this.isMounted ? this.$refs.listener.clientLeft : 0;
-    },
-    aR() {
-      return this.isMounted ? this.mainWidth - this.$refs.listener.clientLeft : 0;
-    },
-    aT() {
-      return this.isMounted ? this.$refs.listener.clientTop - this.$refs.main.clientTop : 0;
-    },
-    aB() {
-      return this.isMounted ? (this.mainHeight + this.$refs.main.clientTop) - this.$refs.listener.clientTop : 0;
-    },
-    p1() {
-      return this.isMounted ? (this.aL / this.mainWidth + this.aT / this.mainHeight) / 2 : 0;
-    },
-    p2() {
-      return this.isMounted ? (1 - (this.aL / this.mainWidth) + this.aT / this.mainHeight) / 2 : 0;
-    },
-    p3() {
-      return this.isMounted ? (this.aL / this.mainWidth + 1 - (this.aT / this.mainHeight)) / 2 : 0;
-    },
-    p4() {
-      return this.isMounted ? (1 - (this.aL / this.mainWidth) + 1 - (this.aT / this.mainHeight)) / 2 : 0;
     }
   },
   beforeCreate: function () {
@@ -86,11 +50,28 @@ export default Vue.extend({
         .map(file => AudioFile.fromPath(require("./audio/" + file.substr(2))))) // Audiodatei aus Pfad erstellen (substring löscht ./)
         .then(audio_files => this.audio_files = audio_files);
   },
-  mounted() {
-    this.isMounted = true;
-  },
   methods: {
+    calcEdges() {
+      let listener = this.$refs.listener.getBoundingClientRect(),
+          main = this.$refs.main.getBoundingClientRect();
+
+      let dSeite = [
+        listener.x,
+        main.y - listener.y,
+        main.x + main.width - listener.x,
+        main.y + main.height - listener.y
+      ].map(Math.abs);
+      let diagonale = Math.sqrt(main.height ** 2 + main.width ** 2);
+      this.edges = [0, 1, 2, 3].map(i => diagonale - Math.sqrt(dSeite[i] ** 2 + dSeite[(i + 1) % 4] ** 2));
+      let sum = this.edges.reduce((a, b) => a + b, 0);
+      this.edges = this.edges.map(v => v / sum);
+    },
     dragListener(e) {
+      let main = this.$refs.main.getBoundingClientRect();
+      let minX = main.x,
+          maxX = main.x + main.width,
+          minY = main.y,
+          maxY = main.y + main.height;
       e.preventDefault();
       const el = e.target;
       el.x = e.clientX;
@@ -101,10 +82,13 @@ export default Vue.extend({
       };
       document.onmousemove = e => {
         e.preventDefault();
-        el.style.top = (el.offsetTop - (el.y - e.clientY)) + "px";
-        el.style.left = (el.offsetLeft - (el.x - e.clientX)) + "px";
-        el.x = e.clientX;
-        el.y = e.clientY;
+        if (e.clientX >= minX && e.clientX <= maxX && e.clientY >= minY && e.clientY <= maxY) {
+          el.style.top = (el.offsetTop - (el.y - e.clientY)) + "px";
+          el.style.left = (el.offsetLeft - (el.x - e.clientX)) + "px";
+          el.x = e.clientX;
+          el.y = e.clientY;
+          this.calcEdges(e.clientX, e.clientY);
+        }
       };
     }
   }
