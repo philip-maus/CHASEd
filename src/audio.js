@@ -6,6 +6,7 @@ class AudioFile {
         this.path = path; // Dateipfad
         this.tags = tags; // MP3-Tags
         this.audio = document.createElement("audio"); // Audio-HTML-Element
+        this.audio.preload = "auto";
         this.audio.src = path; // Dateipfad für das HTML-Element
         document.body.append(this.audio); // Zum Body hinzufügen, damit die Datei abgespielt werden kann.
     }
@@ -25,6 +26,13 @@ class AudioFile {
             },
             onError: error => reject(error) // Fehler beim Laden
         }));
+    }
+
+    play() {
+        return new Promise(a => {
+            this.audio.play();
+            setTimeout(a, this.tags["NEXT"] * 1000);
+        });
     }
 }
 

@@ -2,22 +2,35 @@
   <div class="app-content">
     <header>
       <div class="player">
-        <span v-if="play">Spielt gerade: </span>
-        <span v-if="play">{{ playing.tags.title }}</span>
-        <button @click="play = !play">{{ play ? "Pause" : "Abspielen" }}</button>
+        <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
       </div>
       <h1>CHASEd</h1>
       <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
+      <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
+      <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
     </header>
-    <main ref="main">
+    <main ref="main" v-if="loaded">
+      <div v-for="(c, i) in corner" class="corner">
+        <span>{{ keys(c).map(k => "Ecke " + (i + 1) + ": " + k + " = " + c[k]).reduce((p, c) => p + ", " + c) }}</span>
+        <span>{{ (i < edges.length ? edges[i] : middle) * 100 }}%</span>
+      </div>
       <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
     </main>
-    <aside>
-      <h2>Debug-Infos:</h2>
-      <ul>
-        <li v-for="i in [0, 1, 2, 3]">Ecke {{ i + 1 }}: {{ edges[i] }}%</li>
-        <li>Summe: {{ sum }}%</li>
-      </ul>
+    <aside v-if="loaded">
+      <div>
+        <table v-if="audio_files.length > 0">
+          <thead>
+          <tr>
+            <th v-for="tag in tags">{{ tag.toLocaleLowerCase() }}</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="file in audio_files" @click="(playing = file).play()" :class="playing === file ? 'active' : ''">
+            <td v-for="tag in values(file.tags)">{{ tag }}</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
     </aside>
   </div>
 </template>
@@ -28,43 +41,71 @@ import AudioFile from "./audio";
 export default Vue.extend({
   name: "App",
   data: () => ({
+    allFiles: 0,
     audio_files: [],
+    corner: [
+      {MODE: "Aeolian"},
+      {KEY: "Eb"},
+      {KEY: "Ab"},
+      {KEY: "F"},
+      {KEY: "F"}
+    ],
     playing: null,
     edges: [0.25, 0.25, 0.25, 0.25]
   }),
   computed: {
-    sum() {
-      return this.edges.reduce((a, b) => a + b, 0);
+    loaded() {
+      return this.allFiles > 0 && this.allFiles === this.audio_files.length;
+    },
+    ranges() {
+      let tmp = 0;
+      return [...this.edges.map(v => tmp += v), 1];
+    },
+    tags() {
+      return this.audio_files.length > 0 ? Object.keys(this.audio_files[0].tags) : [];
+    },
+    middle() {
+      return Math.round(10 - (this.edges.reduce((a, b) => a + b, 0)) * 10) / 10;
     },
     play: {
       get() {
         return this.playing != null;
       },
       set(value) {
-        this.playing = value ? {tags: {"title": "asdf"}} : null;
+        if (value) this.playNext();
+        else this.playing = null;
       }
     }
   },
-  beforeCreate: function () {
-    Promise.all(require.context('./audio', true, /\.mp3$/).keys() // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
-        .map(file => AudioFile.fromPath(require("./audio/" + file.substr(2))))) // Audiodatei aus Pfad erstellen (substring löscht ./)
-        .then(audio_files => this.audio_files = audio_files);
+  mounted: function () {
+    let files = require.context('./audio', true, /\.mp3$/).keys(); // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
+    this.allFiles = files.length;
+    Promise.all(files.map(f => AudioFile.fromPath(require("./audio/" + f.substr(2))).then(f => this.audio_files.push(f)))).then(this.calcEdges);
   },
   methods: {
+    keys: Object.keys,
+    values: Object.values,
+    playNext() {
+      let next = Math.random(), category = 0;
+      this.ranges.forEach((v, i) => category = next > v ? i + 1 : category);
+      if (category < this.corner.length) {
+        let condition = this.corner[category];
+        let selection = this.audio_files.filter(v => Object.keys(condition).map(k => v.tags[k] === condition[k]).reduce((p, c) => p && c));
+        (this.playing = selection[Math.floor(Math.random() * selection.length)]).play().then(() => {
+          if (this.play) this.playNext();
+        });
+      } else this.playNext();
+    },
     calcEdges() {
       let listener = this.$refs.listener.getBoundingClientRect(),
           main = this.$refs.main.getBoundingClientRect();
 
-      let dSeite = [
-        listener.x,
-        main.y - listener.y,
-        main.x + main.width - listener.x,
-        main.y + main.height - listener.y
-      ].map(Math.abs);
-      let diagonale = Math.sqrt(main.height ** 2 + main.width ** 2);
-      this.edges = [0, 1, 2, 3].map(i => diagonale - Math.sqrt(dSeite[i] ** 2 + dSeite[(i + 1) % 4] ** 2));
-      let sum = this.edges.reduce((a, b) => a + b, 0);
-      this.edges = this.edges.map(v => v / sum);
+      let dX = (listener.x - main.x) / main.width,
+          dY = (listener.y - main.y) / main.height;
+
+      let tmpEdges = [[1, 1], [1, 0], [0, 0], [0, 1]].map(v => ((v[0] ? 1 - dX : dX) + (v[1] ? 1 - dY : dY)) / 2);
+      tmpEdges.map((v, i) => v - tmpEdges[(i + 2) % 4])
+          .forEach((v, i) => Vue.set(this.edges, i, v < 0 ? 0 : Math.round(v * 10) / 10));
     },
     dragListener(e) {
       let main = this.$refs.main.getBoundingClientRect();
@@ -82,12 +123,13 @@ export default Vue.extend({
       };
       document.onmousemove = e => {
         e.preventDefault();
-        if (e.clientX >= minX && e.clientX <= maxX && e.clientY >= minY && e.clientY <= maxY) {
-          el.style.top = (el.offsetTop - (el.y - e.clientY)) + "px";
-          el.style.left = (el.offsetLeft - (el.x - e.clientX)) + "px";
+        let top = (el.offsetTop - (el.y - e.clientY)), left = (el.offsetLeft - (el.x - e.clientX));
+        if (left >= minX && left <= maxX && top >= minY && top <= maxY) {
+          el.style.top = top + "px";
+          el.style.left = left + "px";
           el.x = e.clientX;
           el.y = e.clientY;
-          this.calcEdges(e.clientX, e.clientY);
+          this.calcEdges();
         }
       };
     }
@@ -95,7 +137,8 @@ export default Vue.extend({
 });
 </script>
 <style module>
-body {
+
+.app-content {
   background-color: #aaa;
   color: #000;
 }
@@ -121,6 +164,11 @@ header {
   transform: translateY(-50%);
 }
 
+.active {
+  background: rgb(131, 58, 180);
+  background: linear-gradient(90deg, rgba(131, 58, 180, 1) 0%, rgba(253, 29, 29, 1) 50%, rgba(252, 176, 69, 1) 100%);
+}
+
 main {
   /*background: rgb(175, 175, 175);
   background: linear-gradient(90deg, rgba(175, 175, 175, 1) 0%, rgba(175, 175, 175, 1) 45%, rgba(200, 200, 200, 1) 100%);*/
@@ -139,6 +187,38 @@ main {
   background-position: center;
 }
 
+.corner:nth-of-type(0n+1) {
+  top: 0;
+  left: 0
+}
+
+.corner:nth-of-type(0n+2) {
+  bottom: 0;
+  left: 0
+}
+
+.corner:nth-of-type(0n+3) {
+  bottom: 0;
+  right: 0
+}
+
+.corner:nth-of-type(0n+4) {
+  top: 0;
+  right: 0
+}
+
+.corner:nth-of-type(0n+5) {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%)
+}
+
+.corner {
+  position: absolute;
+  padding: 1rem;
+  background-color: #aaaaaa
+}
+
 aside {
   position: fixed;
   right: 0;
@@ -147,6 +227,14 @@ aside {
   width: 30%;
   background-color: rgba(0, 0, 0, 0.7);
   color: #fff;
+}
+
+tbody > tr {
+  cursor: pointer;
+}
+
+aside > div {
+  padding: 1rem;
 }
 
 h1 {
@@ -160,7 +248,7 @@ button {
   float: right;
   padding: 1rem 0.5rem;
   margin: 1rem;
-  width: 10rem;
+  width: 100%;
   font-size: 1rem;
 }
 
@@ -173,6 +261,11 @@ p {
 .listener {
   left: 50%;
   top: 50%;
+}
+
+table {
+  width: 100%;
+  text-align: center;
 }
 
 .entity {
@@ -214,6 +307,10 @@ p {
   background-color: white;
   border-radius: 4rem;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+th {
+  text-transform: capitalize;
 }
 
 @-webkit-keyframes pulse-ring {
