@@ -1,23 +1,28 @@
 <template>
   <div class="app-content">
-    <header>
-      <div class="player">
-        <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
-      </div>
-      <h1>CHASEd</h1>
-      <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
-      <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
-      <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
-    </header>
-    <main ref="main" v-if="loaded">
-      <div v-for="(c, i) in corner" class="corner">
-        <span>{{ keys(c).map(k => "Ecke " + (i + 1) + ": " + k + " = " + c[k]).reduce((p, c) => p + ", " + c) }}</span>
-        <span>{{ (i < edges.length ? edges[i] : middle) * 100 }}%</span>
-      </div>
-      <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
-    </main>
-    <aside v-if="loaded">
-      <div>
+    <div class="container">
+      <main ref="main" v-if="loaded">
+        <div v-for="(c, i) in corners" class="corner" @click="toggleExpanded(i)">
+          <span>{{ c.name }}</span>
+          <span>{{ (i < edges.length ? edges[i] : middle) * 100 }}%</span>
+          <div v-if="expanded === i">
+            <span v-for="(value, key) in c.filter"><b>{{ key }} = {{ value }}</b></span>
+          </div>
+        </div>
+        <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
+      </main>
+    </div>
+    <aside>
+      <header>
+        <div class="player">
+          <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
+        </div>
+        <h1>CHASEd</h1>
+        <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
+        <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
+        <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
+      </header>
+      <div v-if="loaded">
         <table v-if="audio_files.length > 0">
           <thead>
           <tr>
@@ -37,21 +42,17 @@
 <script>
 import Vue from "vue";
 import AudioFile from "./audio";
+import config from "./config.json";
 
 export default Vue.extend({
   name: "App",
   data: () => ({
     allFiles: 0,
     audio_files: [],
-    corner: [
-      {MODE: "Aeolian"},
-      {KEY: "Eb"},
-      {KEY: "Ab"},
-      {KEY: "F"},
-      {KEY: "F"}
-    ],
+    corners: config["corners"],
     playing: null,
-    edges: [0.25, 0.25, 0.25, 0.25]
+    edges: [0.25, 0.25, 0.25, 0.25],
+    expanded: -1
   }),
   computed: {
     loaded() {
@@ -80,16 +81,19 @@ export default Vue.extend({
   mounted: function () {
     let files = require.context('./audio', true, /\.mp3$/).keys(); // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
     this.allFiles = files.length;
-    Promise.all(files.map(f => AudioFile.fromPath(require("./audio/" + f.substr(2))).then(f => this.audio_files.push(f)))).then(this.calcEdges);
+    Promise.all(files.map(f => AudioFile.fromPath(require("./audio/" + f.substring(2))).then(f => this.audio_files.push(f)))).then(this.calcEdges);
   },
   methods: {
+    toggleExpanded(n) {
+      this.expanded = this.expanded === n ? -1 : n;
+    },
     keys: Object.keys,
     values: Object.values,
     playNext() {
       let next = Math.random(), category = 0;
       this.ranges.forEach((v, i) => category = next > v ? i + 1 : category);
-      if (category < this.corner.length) {
-        let condition = this.corner[category];
+      if (category < this.corners.length) {
+        let condition = this.corners[category].filter;
         let selection = this.audio_files.filter(v => Object.keys(condition).map(k => v.tags[k] === condition[k]).reduce((p, c) => p && c));
         (this.playing = selection[Math.floor(Math.random() * selection.length)]).play().then(() => {
           if (this.play) this.playNext();
@@ -139,17 +143,8 @@ export default Vue.extend({
 <style module>
 
 .app-content {
-  background-color: #aaa;
   color: #000;
-}
-
-header {
-  position: fixed;
-  width: 100%;
-  height: 10%;
-  top: 0;
-  left: 0;
-  right: 0;
+  font: 1.5rem "Courier New", monospace;
 }
 
 .player {
@@ -159,74 +154,86 @@ header {
 
 .player span {
   position: relative;
-  font: 1.5rem "Courier New", monospace;
   margin-top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%);
 }
 
 .active {
-  background: rgb(131, 58, 180);
   background: linear-gradient(90deg, rgba(131, 58, 180, 1) 0%, rgba(253, 29, 29, 1) 50%, rgba(252, 176, 69, 1) 100%);
 }
 
+.container {
+  width: 100%;
+  height: 100%;
+}
+
 main {
-  /*background: rgb(175, 175, 175);
-  background: linear-gradient(90deg, rgba(175, 175, 175, 1) 0%, rgba(175, 175, 175, 1) 45%, rgba(200, 200, 200, 1) 100%);*/
-  position: fixed;
-  right: 30%;
-  top: 10%;
-  height: 90%;
-  width: 70%;
-  margin: 0;
+  position: absolute;
+  box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
+  -webkit-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
+  -moz-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
+  width: 100vmin;
+  height: 100vmin;
   padding: 0;
-  background: linear-gradient(217deg, rgba(255, 0, 0, .8), rgba(255, 0, 0, 0) 70.71%),
-  linear-gradient(127deg, rgba(0, 255, 0, .8), rgba(0, 255, 0, 0) 70.71%),
-  linear-gradient(336deg, rgba(0, 0, 255, .8), rgba(0, 0, 255, 0) 70.71%);
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  background-position: center;
+  margin: 0 auto;
+  background: url("CHASEd.jpg") no-repeat;
+  background-size: cover;
+  border-top-right-radius: 1em;
+  border-bottom-right-radius: 1em;
 }
 
 .corner:nth-of-type(0n+1) {
   top: 0;
-  left: 0
+  left: 0;
+  border-bottom-right-radius: 1em;
 }
 
 .corner:nth-of-type(0n+2) {
   bottom: 0;
-  left: 0
+  left: 0;
+  border-top-right-radius: 1em;
 }
 
 .corner:nth-of-type(0n+3) {
   bottom: 0;
-  right: 0
+  right: 0;
+  border-bottom-right-radius: 1em;
+  border-top-left-radius: 1em;
 }
 
 .corner:nth-of-type(0n+4) {
   top: 0;
-  right: 0
+  right: 0;
+  border-bottom-left-radius: 1em;
+  border-top-right-radius: 1em
 }
 
 .corner:nth-of-type(0n+5) {
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%)
+  transform: translate(-50%, -50%);
+  border-radius: 1em;
 }
 
 .corner {
   position: absolute;
   padding: 1rem;
-  background-color: #aaaaaa
+  background-color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+.corner:hover {
+  background-color: #fff;
 }
 
 aside {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  height: 90%;
-  width: 30%;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: #fff;
+  float: right;
+  width: auto;
+}
+
+body {
+  margin: auto;
+  overflow: hidden;
 }
 
 tbody > tr {
@@ -269,7 +276,7 @@ table {
 }
 
 .entity {
-  position: fixed;
+  position: absolute;
   transform: translateX(-50%) translateY(-50%);
   width: 4rem;
   height: 4rem;
