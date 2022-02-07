@@ -1,46 +1,30 @@
 <template>
   <div class="app-content">
-  <header>
-    <h1>CHASEd</h1>
-    <span>Compact Half Aleatoric Soundtrack Engine Demonstrator</span>
-  </header>
-    <div class="container">
-      <main ref="main" v-if="loaded" id="main">
-        <div v-for="(c, i) in corners" class="corner" @click="toggleExpanded(i)">
-          <span>{{ c.name }} {{ i < edges.length ? edges[i] : middle }}%</span>
-          <div v-if="expanded === i">
-            <span v-for="(value, key) in c.filter"><b>{{ key }} = {{ value }}</b></span>
-          </div>
+    <main ref="main" v-if="loaded">
+      <div v-for="(c, i) in corners" class="corner" @click="toggleExpanded(i)">
+        <span>{{ c.name }} {{ i < edges.length ? edges[i] : middle }}%</span>
+        <div v-if="expanded === i">
+          <span v-for="(value, key) in c.filter"><b>{{ key }} = {{ value }}</b></span>
         </div>
-        <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
-      </main>
-    </div>
+      </div>
+      <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
+    </main>
     <aside>
-      <div class="player">
-        <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
-      </div>
-      <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
-      <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
-      <div v-if="loaded && play">
-        <h5>Aktuell wird gespielt:</h5>
-        <ul>
-          <li v-for="(value, key) in playing.tags"><b>{{key.toLocaleLowerCase()}}</b>: {{ value }}</li>
-        </ul>
-      </div>
-      <div v-if="loaded">
-        <table v-if="audio_files.length > 0">
-          <thead>
-          <tr>
-            <th v-for="tag in ['title', 'key', 'mode']">{{ tag.toLocaleLowerCase() }}</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="file in audio_files" @click="(playing = file).play()" :class="playing === file ? 'active' : ''">
-            <td v-for="tag in values(file.tags)">{{ tag }}</td>
-          </tr>
-          </tbody>
-        </table>
-      </div>
+      <header>
+        <div class="player">
+          <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
+        </div>
+        <h1>CHASEd</h1>
+        <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
+        <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
+        <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
+        <div v-if="loaded && play">
+          <h5>Aktuell wird gespielt:</h5>
+          <ul>
+            <li v-for="(value, key) in playing.tags"><b>{{ key.toLocaleLowerCase() }}</b>: {{ value }}</li>
+          </ul>
+        </div>
+      </header>
     </aside>
   </div>
 </template>
@@ -197,11 +181,6 @@ b {
   background: linear-gradient(90deg, rgba(131, 58, 180, 1) 0%, rgba(253, 29, 29, 1) 50%, rgba(252, 176, 69, 1) 100%);
 }
 
-.container {
-  width: 100%;
-  height: 100%;
-}
-
 main {
   position: absolute;
   width: 100vmin;
@@ -263,7 +242,8 @@ main {
 
 aside {
   float: right;
-  width: auto;
+  width: max-content;
+  height: max-content;
 }
 
 body {
@@ -279,18 +259,11 @@ aside > div {
   padding: 1rem;
 }
 
-header {
-  margin: 20px;
-}
-
-header > h1 {
+h1 {
+  margin-top: 20px;
+  margin-left: 20px;
   font: 2rem "Courier New", monospace;
   color: #000;
-  display: inline-block;
-}
-
-header > span {
-  white-space: nowrap;
 }
 
 button {
@@ -303,6 +276,7 @@ button {
 
 p {
   margin-left: 20px;
+  font: 1.5rem "Courier New", monospace;
   color: #000;
 }
 
