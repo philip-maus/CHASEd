@@ -25,7 +25,7 @@
       </header>
       <footer>
         Von <a href="https://accesshologram.bandcamp.com/" target="_blank">Robin Hintzen</a> &amp; <a target="_blank"
-                                                                                                  href="https://about.pmaus.de/">Philip
+                                                                                                      href="https://about.pmaus.de/">Philip
         Maus</a>
       </footer>
     </aside>
@@ -42,7 +42,7 @@ export default {
     audio_files: [],
     corners: config["corners"],
     playing: null,
-    edges: [0.25, 0.25, 0.25, 0.25],
+    edges: [0, 0, 0, 0],
     offset: 1.5
   }),
   computed: {
@@ -73,12 +73,19 @@ export default {
     }
   },
   mounted: function () {
-    let files = require.context('./audio', true, /\.mp3$/).keys(); // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
+    let files = require.context('./audio', true, /\.mp3$/).keys();
     this.allFiles = files.length;
-    files.map(f => this.audio_files.push(await AudioFile.fromPath(require("./audio/" + f.substring(2)))));
-    this.calcEdges();
+    this.loadFile(files, 0); // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
   },
+
   methods: {
+    loadFile(files, i) {
+      return AudioFile.fromPath(require("./audio/" + files[i].substring(2))).then(v => {
+        this.audio_files.push(v);
+        if (i < this.allFiles) this.loadFile(files, i + 1);
+        else this.calcEdges();
+      });
+    },
     keys: Object.keys,
     values: Object.values,
     playNext() {
