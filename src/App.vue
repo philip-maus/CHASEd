@@ -75,7 +75,8 @@ export default {
   mounted: function () {
     let files = require.context('./audio', true, /\.mp3$/).keys(); // Alle mp3-Dateien aus dem "audio" Ordner als relativer Pfad (z.B. ./1.mp3 oder ./2.mp3)
     this.allFiles = files.length;
-    Promise.all(files.map(f => AudioFile.fromPath(require("./audio/" + f.substring(2))).then(f => this.audio_files.push(f)))).then(this.calcEdges);
+    files.map(f => this.audio_files.push(await AudioFile.fromPath(require("./audio/" + f.substring(2)))));
+    this.calcEdges();
   },
   methods: {
     keys: Object.keys,
