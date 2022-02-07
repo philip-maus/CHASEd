@@ -9,7 +9,14 @@ module.exports = {
         rules: [
             {
                 test: /\.vue$/,
-                loader: 'vue-loader'
+                loader: 'vue-loader',
+                options: {
+                    compilerOptions: {
+                        compatConfig: {
+                            MODE: 2
+                        }
+                    }
+                }
             },
             {
                 test: /\.tsx?$/,
@@ -83,7 +90,7 @@ module.exports = {
     },
     resolve: {
         alias: {
-            vue$: 'vue/dist/vue.esm.js'
+            vue: '@vue/compat'
         },
         extensions: ['.tsx', '.ts', '.js', '.vue'],
     },
@@ -91,12 +98,6 @@ module.exports = {
         static: {
             directory: path.join(__dirname, 'public'),
         },
-        client: {
-            progress: true,
-            overlay: true,
-            webSocketURL: "wss://pc.pmaus.de/ws"
-        },
-        allowedHosts: ["pc.pmaus.de"],
         compress: true,
         port: 9000,
     }

@@ -1,10 +1,13 @@
 <template>
   <div class="app-content">
+  <header>
+    <h1>CHASEd</h1>
+    <span>Compact Half Aleatoric Soundtrack Engine Demonstrator</span>
+  </header>
     <div class="container">
-      <main ref="main" v-if="loaded">
+      <main ref="main" v-if="loaded" id="main">
         <div v-for="(c, i) in corners" class="corner" @click="toggleExpanded(i)">
-          <span>{{ c.name }}</span>
-          <span>{{ (i < edges.length ? edges[i] : middle) * 100 }}%</span>
+          <span>{{ c.name }} {{ i < edges.length ? edges[i] : middle }}%</span>
           <div v-if="expanded === i">
             <span v-for="(value, key) in c.filter"><b>{{ key }} = {{ value }}</b></span>
           </div>
@@ -13,20 +16,22 @@
       </main>
     </div>
     <aside>
-      <header>
-        <div class="player">
-          <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
-        </div>
-        <h1>CHASEd</h1>
-        <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
-        <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
-        <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
-      </header>
+      <div class="player">
+        <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
+      </div>
+      <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
+      <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
+      <div v-if="loaded && play">
+        <h5>Aktuell wird gespielt:</h5>
+        <ul>
+          <li v-for="(value, key) in playing.tags"><b>{{key.toLocaleLowerCase()}}</b>: {{ value }}</li>
+        </ul>
+      </div>
       <div v-if="loaded">
         <table v-if="audio_files.length > 0">
           <thead>
           <tr>
-            <th v-for="tag in tags">{{ tag.toLocaleLowerCase() }}</th>
+            <th v-for="tag in ['title', 'key', 'mode']">{{ tag.toLocaleLowerCase() }}</th>
           </tr>
           </thead>
           <tbody>
@@ -44,7 +49,7 @@ import Vue from "vue";
 import AudioFile from "./audio";
 import config from "./config.json";
 
-export default Vue.extend({
+export default {
   name: "App",
   data: () => ({
     allFiles: 0,
@@ -66,7 +71,7 @@ export default Vue.extend({
       return this.audio_files.length > 0 ? Object.keys(this.audio_files[0].tags) : [];
     },
     middle() {
-      return Math.round(10 - (this.edges.reduce((a, b) => a + b, 0)) * 10) / 10;
+      return (100 - this.edges.reduce((a, b) => a + b, 0)) | 0;
     },
     play: {
       get() {
@@ -100,16 +105,42 @@ export default Vue.extend({
         });
       } else this.playNext();
     },
-    calcEdges() {
-      let listener = this.$refs.listener.getBoundingClientRect(),
-          main = this.$refs.main.getBoundingClientRect();
-
-      let dX = (listener.x - main.x) / main.width,
-          dY = (listener.y - main.y) / main.height;
+    smallerSquare(n) {
+      [0, 1, 2, 3].forEach(v => this.edges[v] = v === n ? 100 : 0);
+    },
+    setEdges(d, n1, n2) {
+      [0, 1, 2, 3].forEach(v => this.edges[v] = v === n1 ? 100 - d : (v === n2 ? d : 0));
+    },
+    innerSquare(listener, inner) {
+      let dX = (listener.x - inner.x) / inner.width,
+          dY = (listener.y - inner.y) / inner.height;
 
       let tmpEdges = [[1, 1], [1, 0], [0, 0], [0, 1]].map(v => ((v[0] ? 1 - dX : dX) + (v[1] ? 1 - dY : dY)) / 2);
       tmpEdges.map((v, i) => v - tmpEdges[(i + 2) % 4])
-          .forEach((v, i) => Vue.set(this.edges, i, v < 0 ? 0 : Math.round(v * 10) / 10));
+          .forEach((v, i) => Vue.set(this.edges, i, v < 0 ? 0 : Math.floor(v * 100) | 0));
+    },
+    calcEdges() {
+      let listener = this.$refs.listener.getBoundingClientRect(),
+          outer = this.$refs.main.getBoundingClientRect();
+      listener = new DOMRect(listener.x + listener.width / 2, listener.y + listener.height / 2, listener.width, listener.height);
+
+      let inner = new DOMRect((outer.width - (Math.sqrt(2) / 2 * outer.width)) / 2, (outer.height - (Math.sqrt(2) / 2 * outer.height)) / 2,
+          Math.sqrt(2) / 2 * outer.width, Math.sqrt(2) / 2 * outer.height)
+
+      let inLeftX = listener.x >= inner.x,
+          inRightX = listener.x < (outer.width - inner.x),
+          inUpperY = listener.y >= inner.y,
+          inLowerY = listener.y < (outer.height - inner.y);
+      let inX = inLeftX && inRightX,
+          inY = inUpperY && inLowerY;
+
+      if (inX) {
+        if (inY) this.innerSquare(listener, inner);
+        else this.setEdges(Math.round(100 * (listener.x - inner.x) / inner.width) | 0, inUpperY ? 1 : 0, inUpperY ? 2 : 3);
+      } else {
+        if (inY) this.setEdges(Math.round(100 * (listener.y - inner.y) / inner.height) | 0, inRightX ? 0 : 3, inRightX ? 1 : 2);
+        else this.smallerSquare(!inLeftX && inRightX ? (inUpperY && !inLowerY ? 1 : 0) : (inUpperY && !inLowerY ? 2 : 3));
+      }
     },
     dragListener(e) {
       let main = this.$refs.main.getBoundingClientRect();
@@ -138,9 +169,13 @@ export default Vue.extend({
       };
     }
   }
-});
+};
 </script>
 <style module>
+
+b {
+  text-transform: capitalize;
+}
 
 .app-content {
   color: #000;
@@ -169,13 +204,13 @@ export default Vue.extend({
 
 main {
   position: absolute;
-  box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
-  -webkit-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
-  -moz-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
   width: 100vmin;
   height: 100vmin;
   padding: 0;
   margin: 0 auto;
+  box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
+  -webkit-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
+  -moz-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
   background: url("CHASEd.jpg") no-repeat;
   background-size: cover;
   border-top-right-radius: 1em;
@@ -244,11 +279,18 @@ aside > div {
   padding: 1rem;
 }
 
-h1 {
-  margin-top: 20px;
-  margin-left: 20px;
+header {
+  margin: 20px;
+}
+
+header > h1 {
   font: 2rem "Courier New", monospace;
   color: #000;
+  display: inline-block;
+}
+
+header > span {
+  white-space: nowrap;
 }
 
 button {
@@ -261,13 +303,13 @@ button {
 
 p {
   margin-left: 20px;
-  font: 1.5rem "Courier New", monospace;
   color: #000;
 }
 
 .listener {
   left: 50%;
   top: 50%;
+  z-index: 1000;
 }
 
 table {
