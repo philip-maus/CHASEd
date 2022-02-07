@@ -9,14 +9,7 @@ module.exports = {
         rules: [
             {
                 test: /\.vue$/,
-                loader: 'vue-loader',
-                options: {
-                    compilerOptions: {
-                        compatConfig: {
-                            MODE: 2
-                        }
-                    }
-                }
+                loader: 'vue-loader'
             },
             {
                 test: /\.tsx?$/,
@@ -84,15 +77,8 @@ module.exports = {
         },
         minimizer: [
             new TerserPlugin(),
-            new CssMinimizerPlugin(),
-            new VueLoaderPlugin()
+            new CssMinimizerPlugin()
         ]
-    },
-    resolve: {
-        alias: {
-            vue: '@vue/compat'
-        },
-        extensions: ['.tsx', '.ts', '.js', '.vue'],
     },
     devServer: {
         static: {

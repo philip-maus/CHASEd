@@ -28,10 +28,10 @@ class AudioFile {
         }));
     }
 
-    play() {
+    play(offset) {
         return new Promise(a => {
             this.audio.play();
-            setTimeout(a, this.tags["NEXT"] * 1000);
+            setTimeout(a, Math.max(this.tags["NEXT"] * 1000 + offset * 1000, 0));
         });
     }
 }

@@ -1,23 +1,21 @@
 <template>
   <div class="app-content">
     <main ref="main" v-if="loaded">
-      <div v-for="(c, i) in corners" class="corner" @click="toggleExpanded(i)">
+      <div v-for="(c, i) in corners" class="corner">
         <span>{{ c.name }} {{ i < edges.length ? edges[i] : middle }}%</span>
-        <div v-if="expanded === i">
-          <span v-for="(value, key) in c.filter"><b>{{ key }} = {{ value }}</b></span>
-        </div>
       </div>
       <div :class="'entity listener' + (play ? ' playing' : '')" @mousedown="dragListener" ref="listener"></div>
     </main>
     <aside>
       <header>
-        <div class="player">
-          <button @click="play = !play">{{ play ? "⏸" : "▶" }}</button>
-        </div>
         <h1>CHASEd</h1>
         <p>Compact Half Aleatoric Soundtrack Engine Demonstrator</p>
+        <button @click="play = !play" v-if="loaded">{{ play ? "Stopp" : "Start" }}</button>
         <b v-if="allFiles === 0">Keine zu ladenden Dateien gefunden!</b>
         <p v-if="allFiles > 0 && !loaded">Lade Dateien: {{ audio_files.length }}/{{ allFiles }}</p>
+        <h2>Einstellungen</h2>
+        <span>Zusätzliche Verzögerung: <input type="range" min="-3" max="5" step="0.1"
+                                              v-model="this.offset"> {{ this.displayOffset }}s</span>
         <div v-if="loaded && play">
           <h5>Aktuell wird gespielt:</h5>
           <ul>
@@ -25,11 +23,15 @@
           </ul>
         </div>
       </header>
+      <footer>
+        Von <a href="https://accesshologram.bandcamp.com/" target="_blank">Robin Hintzen</a> &amp; <a target="_blank"
+                                                                                                  href="https://about.pmaus.de/">Philip
+        Maus</a>
+      </footer>
     </aside>
   </div>
 </template>
 <script>
-import Vue from "vue";
 import AudioFile from "./audio";
 import config from "./config.json";
 
@@ -41,15 +43,18 @@ export default {
     corners: config["corners"],
     playing: null,
     edges: [0.25, 0.25, 0.25, 0.25],
-    expanded: -1
+    offset: 1.5
   }),
   computed: {
+    displayOffset() {
+      return parseFloat(this.offset).toLocaleString("de", {useGrouping: false, minimumFractionDigits: 1})
+    },
     loaded() {
       return this.allFiles > 0 && this.allFiles === this.audio_files.length;
     },
     ranges() {
       let tmp = 0;
-      return [...this.edges.map(v => tmp += v), 1];
+      return [...this.edges.map(v => tmp += v / 100), 1];
     },
     tags() {
       return this.audio_files.length > 0 ? Object.keys(this.audio_files[0].tags) : [];
@@ -73,9 +78,6 @@ export default {
     Promise.all(files.map(f => AudioFile.fromPath(require("./audio/" + f.substring(2))).then(f => this.audio_files.push(f)))).then(this.calcEdges);
   },
   methods: {
-    toggleExpanded(n) {
-      this.expanded = this.expanded === n ? -1 : n;
-    },
     keys: Object.keys,
     values: Object.values,
     playNext() {
@@ -84,7 +86,7 @@ export default {
       if (category < this.corners.length) {
         let condition = this.corners[category].filter;
         let selection = this.audio_files.filter(v => Object.keys(condition).map(k => v.tags[k] === condition[k]).reduce((p, c) => p && c));
-        (this.playing = selection[Math.floor(Math.random() * selection.length)]).play().then(() => {
+        (this.playing = selection[Math.floor(Math.random() * selection.length)]).play(this.offset).then(() => {
           if (this.play) this.playNext();
         });
       } else this.playNext();
@@ -101,7 +103,7 @@ export default {
 
       let tmpEdges = [[1, 1], [1, 0], [0, 0], [0, 1]].map(v => ((v[0] ? 1 - dX : dX) + (v[1] ? 1 - dY : dY)) / 2);
       tmpEdges.map((v, i) => v - tmpEdges[(i + 2) % 4])
-          .forEach((v, i) => Vue.set(this.edges, i, v < 0 ? 0 : Math.floor(v * 100) | 0));
+          .forEach((v, i) => this.edges[i] = v < 0 ? 0 : Math.floor(v * 100) | 0);
     },
     calcEdges() {
       let listener = this.$refs.listener.getBoundingClientRect(),
@@ -164,32 +166,41 @@ b {
 .app-content {
   color: #000;
   font: 1.5rem "Courier New", monospace;
+  display: flex;
 }
 
-.player {
-  float: right;
-  margin-left: 20px;
+* {
+  box-sizing: border-box;
 }
 
-.player span {
-  position: relative;
-  margin-top: 50%;
-  transform: translate(-50%);
+footer {
+  color: #333;
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
 }
 
 .active {
   background: linear-gradient(90deg, rgba(131, 58, 180, 1) 0%, rgba(253, 29, 29, 1) 50%, rgba(252, 176, 69, 1) 100%);
 }
 
+aside {
+  flex-shrink: 1;
+  flex-grow: 1;
+  transition: width ease-in-out 0.5s;
+}
+
 main {
-  position: absolute;
+  flex-shrink: 0;
+  flex-grow: 0;
+  display: inline-block;
+  position: relative;
   width: 100vmin;
   height: 100vmin;
   padding: 0;
-  margin: 0 auto;
-  box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
-  -webkit-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
-  -moz-box-shadow: 0 10px 20px -1px rgba(0, 0, 0, 0.52);
+  margin: 0 0;
+  box-shadow: 10px 10px 44px -10px rgba(0, 0, 0, 0.7);
+  -webkit-box-shadow: 10px 10px 44px -10px rgba(0, 0, 0, 0.7);
   background: url("CHASEd.jpg") no-repeat;
   background-size: cover;
   border-top-right-radius: 1em;
@@ -233,17 +244,6 @@ main {
   position: absolute;
   padding: 1rem;
   background-color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-}
-
-.corner:hover {
-  background-color: #fff;
-}
-
-aside {
-  float: right;
-  width: max-content;
-  height: max-content;
 }
 
 body {
@@ -251,33 +251,23 @@ body {
   overflow: hidden;
 }
 
-tbody > tr {
-  cursor: pointer;
-}
-
-aside > div {
-  padding: 1rem;
-}
-
 h1 {
-  margin-top: 20px;
-  margin-left: 20px;
-  font: 2rem "Courier New", monospace;
-  color: #000;
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.75rem;
 }
 
 button {
-  float: right;
-  padding: 1rem 0.5rem;
-  margin: 1rem;
   width: 100%;
-  font-size: 1rem;
+  padding: 1rem;
+  font-size: 1em;
 }
 
-p {
-  margin-left: 20px;
-  font: 1.5rem "Courier New", monospace;
-  color: #000;
+aside {
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 .listener {
@@ -286,9 +276,8 @@ p {
   z-index: 1000;
 }
 
-table {
-  width: 100%;
-  text-align: center;
+a {
+  color: #000 !important;
 }
 
 .entity {
@@ -330,10 +319,6 @@ table {
   background-color: white;
   border-radius: 4rem;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
-}
-
-th {
-  text-transform: capitalize;
 }
 
 @-webkit-keyframes pulse-ring {

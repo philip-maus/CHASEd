@@ -1,26 +1,26 @@
 {
   "corners": [
     {
-      "filter": {"MODE": "Aeolian"},
+      "filter": {"AREA": "Forest"},
       "name": "Wald"
     },
     {
-      "filter": {"KEY": "Eb"},
+      "filter": {"AREA": "Lake"},
       "name": "See"
     },
     {
-      "filter": {"KEY": "Ab"},
+      "filter": {"AREA": "Town"},
       "name": "Dorf"
     },
     {
       "filter": {
-        "KEY": "F"
+        "AREA": "Mountains"
       },
       "name": "Berge"
     },
     {
       "filter": {
-        "KEY": "F"
+        "AREA": "Mid"
       },
       "name": "Plateau"
     }
