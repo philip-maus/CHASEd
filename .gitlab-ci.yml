@@ -14,7 +14,7 @@ build:
     - npm update -g
   script:
     - npm install
-    - npm run build
+    - npm run production
 
 pages:
   stage: deploy
